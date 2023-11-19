@@ -95,7 +95,7 @@ while True:
                 print("추출 텍스트: ", sentiment_data)
                 print(f'감정: {sentiment}')
                 print(f'확신 수준: {confidence}')
-                if (sentiment == 'negative') or (word in sentiment_data for word in target_words1): #&(화와 관련된 텍스트 문구/형태소)
+                if (sentiment == 'negative') and (word in sentiment_data for word in target_words1): #&(화와 관련된 텍스트 문구/형태소)
                     try:
                         ser.write(a)
                         time.sleep(5)
@@ -119,7 +119,7 @@ while True:
         else:
             print("STT(음성 인식 텍스트 추출) 요청 오류!! 상태 코드:", rescode)
             print("Error: " + response1.text)
-    elif pulse == b'1':      #졸릴 때의 평균 심박수 범위
+    elif pulse == b'0':      #졸릴 때의 평균 심박수 범위
         if (rescode == 200):  # check for STT response
             sentiment_result = response2.json()
             sentiment = sentiment_result["document"]["sentiment"]
@@ -129,7 +129,7 @@ while True:
                 print("추출 텍스트: ", sentiment_data)
                 print(f'감정: {sentiment}')
                 print(f'확신 수준: {confidence}')
-                if (sentiment == 'negative') or (word in sentiment_data for word in target_words2):  # &(졸음과 관련된 텍스트 문구/형태소)
+                if (sentiment == 'negative') and (word in sentiment_data for word in target_words2):  # &(졸음과 관련된 텍스트 문구/형태소)
                     try:
                         ser.write(a)
                         time.sleep(5)
