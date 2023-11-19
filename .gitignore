@@ -1,160 +1,157 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+import sys
+import os
+import random
+import requests
+import serial
+import time
+import pygame
+import numpy
+import sounddevice as sd
+import soundfile as sf
+from konlpy.tag import Kkma
 
-# C extensions
-*.so
+#serial 통신
+ser = serial.Serial('COM4', 9600)
+a = b'1'
+c = b'0'
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+# 녹음 설정
+duration = 3  # 녹음 시간 (초)
+sample_rate = 44100  # 샘플 속도 (Hz)
+channels = 2  # 채널 수 (스테레오)
 
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
+# 녹음 실행
+print("녹음을 시작합니다...")
+audio_data = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=channels)
+sd.wait()
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+# 녹음된 데이터를 mp3 파일로 저장
+file_path = '저장할 파일 경로.mp3'    #절대 경로로 설정하는 것이 좋음
+sf.write(file_path, audio_data, sample_rate)
+print(f"녹음이 완료되었습니다. 파일이 {file_path}에 저장되었습니다.")
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
+#ClOVA_API 호출하기 위한 값들
+client_id = "CLOVA AI 애플리케이션 id"
+client_secret = "해당 CLOVA AI 애플리케이션 secret"
+lang = "Kor" # 언어 코드 ( Kor, Jpn, Eng, Chn )
+url1 = "https://naveropenapi.apigw.ntruss.com/recog/v1/stt?lang=" + lang    #CSR_api 호출
+url2 = "https://naveropenapi.apigw.ntruss.com/sentiment-analysis/v1/analyze"    #sentiment_api 호출
+headers = {
+    "X-NCP-APIGW-API-KEY-ID": client_id,
+    "X-NCP-APIGW-API-KEY": client_secret,
+    "Content-Type": "application/octet-stream"
+}
+#STT 과정
+with open('저장 경로.mp3', 'rb') as audio_file: #Rest API로 실시간 스트리밍으로 외부 url를 통해 오브젝트 파일을 read 할 경로로 수정할 예정
+    response1 = requests.post(url1, data=audio_file, headers=headers)
+    rescode = response1.status_code
 
-# Translations
-*.mo
-*.pot
+#Sentiment 분석
+sentiment_data = {"content": response1.text}
+headers.update({"Content-Type":"application/json"})
+response2 = requests.post(url2, json=sentiment_data, headers=headers)
 
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
+#Music파일 경로
+music_playlist1 = 'music/angry'     #분노와 관련된 음악
+music_playlist2 = 'music/tired'     #졸음과 관련된 음악
 
-# Flask stuff:
-instance/
-.webassets-cache
+#다음 경로 디렉토리 내에 있는 모든 음악파일 목록 가져오고 섞기
+music_files1 = [f for f in os.listdir(music_playlist1) if f.endswith('.mp3')]
+random.shuffle(music_files1)
+music_files2 = [f for f in os.listdir(music_playlist2) if f.endswith('.mp3')]
+random.shuffle(music_files2)
 
-# Scrapy stuff:
-.scrapy
+#pygame초기화
+pygame.mixer.init()
 
-# Sphinx documentation
-docs/_build/
+#형태소 분석기 초기화
+kkma = Kkma()
 
-# PyBuilder
-.pybuilder/
-target/
+#분석할 텍스트와 형태소 분석 수행
+text1 = response1.text
+morphemes = kkma.morphs(text1)
 
-# Jupyter Notebook
-.ipynb_checkpoints
+# 특정 단어를 포함하는 형태소 추출(한국어 기준)
+target_words1 = ['화', '화나', '화나다', '화난다', '화가 난다', '분노', '짜증', '짜증나', '짜증나다', '짜증난다', '빡', '썅', '씨발', '시벌', '시발', '욕',
+                 '씨벌', '개새끼', '개새꺄', '병신', '개색햐', '빡치다', '빡친다', '엿', '뻐큐', '빠큐', '엿 먹어라', '뒤지다', '죽어라', '죽다', '스발',
+                 '쓰발', '시부럴', '씨부럴', '맞다', '맞고 싶다', '맞아라', '때리다', '때리고 싶다', '조지다', '조지고 싶다', '좆같다', '좆같네', '좆같아', '좆',
+                 '쳐맞다', '쳐맞고 싶냐', '돌아버리다', '저능아', '씹']
+target_words2 = ['졸리', '졸리다', '졸려', '잠', '피곤', '피곤하다', '하암', '졸음', '피로', '하품', '잠온다', '잠오다', '자다', '자고 싶다']
+matching_morphemes1 = [morpheme for morpheme in morphemes if any(target in morpheme for target in target_words1)]
+matching_morphemes2 = [morpheme for morpheme in morphemes if any(target in morpheme for target in target_words2)]
 
-# IPython
-profile_default/
-ipython_config.py
+#main_loop문
+print("Please. Record Your Voice!! ^_^")
+while True:
+    pulse = ser.read()
+    print("심박 값 조건 {}".format(pulse))
+    if pulse == b'1':        #화날 때의 평균 심박수
+        if(rescode == 200): #check for STT response
+            sentiment_result = response2.json()
+            sentiment = sentiment_result["document"]["sentiment"]
+            confidence = sentiment_result["document"]["confidence"]
 
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
+            if sentiment is not None:
+                print("추출 텍스트: ", sentiment_data)
+                print(f'감정: {sentiment}')
+                print(f'확신 수준: {confidence}')
+                if (sentiment == 'negative') or (word in sentiment_data for word in target_words1): #&(화와 관련된 텍스트 문구/형태소)
+                    try:
+                        ser.write(a)
+                        time.sleep(5)
+                        for music_file in music_files1:
+                            music_path1 = os.path.join(music_playlist1, music_file)
+                        print("분노가 감지되었습니다!")
+                        pygame.mixer.music.load(music_path1)  # 화날 때 음악 파일을 지정
+                        pygame.mixer.music.play()
+                        pygame.mixer.music.set_volume(0.5)  # 볼륨 조절
+                        while pygame.mixer.music.get_busy():
+                            continue
+                    except KeyboardInterrupt:
+                        pygame.mixer.music.stop()
+                        print("음악 재생을 중지합니다.")
+                        ser.write(c)
+                        ser.close()
+                else:
+                    print(f'알 수 없는 감정: {sentiment}')
+            else:
+                print("감정 결과를 찾을 수 없습니다! (ㅠ.ㅠ)")
+        else:
+            print("STT(음성 인식 텍스트 추출) 요청 오류!! 상태 코드:", rescode)
+            print("Error: " + response1.text)
+    elif pulse == b'1':      #졸릴 때의 평균 심박수 범위
+        if (rescode == 200):  # check for STT response
+            sentiment_result = response2.json()
+            sentiment = sentiment_result["document"]["sentiment"]
+            confidence = sentiment_result["document"]["confidence"]
 
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
-#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
-#   in version control.
-#   https://pdm.fming.dev/#use-with-ide
-.pdm.toml
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+            if sentiment is not None:
+                print("추출 텍스트: ", sentiment_data)
+                print(f'감정: {sentiment}')
+                print(f'확신 수준: {confidence}')
+                if (sentiment == 'negative') or (word in sentiment_data for word in target_words2):  # &(졸음과 관련된 텍스트 문구/형태소)
+                    try:
+                        ser.write(a)
+                        time.sleep(5)
+                        for music_file in music_files2:
+                            music_path2 = os.path.join(music_playlist2, music_file)
+                            print("졸음이 감지되었습니다!")
+                            pygame.mixer.music.load(music_path2)  # 졸릴 때 음악 파일을 지정
+                            pygame.mixer.music.play()
+                            pygame.mixer.music.set_volume(0.5)  # 볼륨 조절
+                            while pygame.mixer.music.get_busy():
+                                continue
+                    except KeyboardInterrupt:
+                        pygame.mixer.music.stop()
+                        ser.write(c)
+                        ser.close()
+                        print("음악 재생 및 진동을 중지합니다.")
+                else:
+                    print(f'알 수 없는 감정: {sentiment}')
+            else:
+                print("감정 결과를 찾을 수 없습니다! (ㅠ.ㅠ)")
+        else:
+            print("STT(음성 인식 텍스트 추출) 요청 오류!! 상태 코드:", rescode)
+            print("Error: " + response1.text)
+    else:
+        print(f"특이 사항 및 이상 없는 것 같습니다!")
