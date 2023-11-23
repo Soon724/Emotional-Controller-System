@@ -8,6 +8,7 @@ import pygame
 import numpy
 import sounddevice as sd
 import soundfile as sf
+from PIL import Image
 from konlpy.tag import Kkma
 
 #serial 통신
@@ -80,6 +81,31 @@ target_words2 = ['졸리', '졸리다', '졸려', '잠', '피곤', '피곤하다
 matching_morphemes1 = [morpheme for morpheme in morphemes if any(target in morpheme for target in target_words1)]
 matching_morphemes2 = [morpheme for morpheme in morphemes if any(target in morpheme for target in target_words2)]
 
+#이미지 랜덤 팝업(image random pop-up at the screen)
+def play_random_image(directory_path):
+    # 디렉터리 내의 모든 파일 가져오기
+    image_files = [f for f in os.listdir(directory_path) if
+                   f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+
+    # 랜덤으로 이미지 선택
+    if not image_files:
+        print("디렉터리에 이미지 파일이 없습니다.")
+        return
+
+    selected_image = random.choice(image_files)
+    image_path = os.path.join(directory_path, selected_image)
+
+    # 이미지 보기
+    try:
+        img = Image.open(image_path)
+        img.show()
+    except Exception as e:
+        print(f"이미지를 열 수 없습니다: {e}")
+
+#이미지 파일 경로(권고 문구 기준)
+directory_path1 = '/path1'
+directory_path2 = '/path2'
+
 #main_loop문
 print("Please. Record Your Voice!! ^_^")
 while True:
@@ -96,6 +122,8 @@ while True:
                 print(f'감정: {sentiment}')
                 print(f'확신 수준: {confidence}')
                 if (sentiment == 'negative') and (word in sentiment_data for word in target_words1): #&(화와 관련된 텍스트 문구/형태소)
+                    print(matching_morphemes1)  # 추출된 형태소 출력
+                    play_random_image(directory_path1)
                     try:
                         ser.write(a)
                         time.sleep(5)
@@ -130,6 +158,8 @@ while True:
                 print(f'감정: {sentiment}')
                 print(f'확신 수준: {confidence}')
                 if (sentiment == 'negative') and (word in sentiment_data for word in target_words2):  # &(졸음과 관련된 텍스트 문구/형태소)
+                    print(matching_morphemes1)  # 추출된 형태소 출력
+                    play_random_image(directory_path2)
                     try:
                         ser.write(a)
                         time.sleep(5)
